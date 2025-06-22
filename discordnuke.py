@@ -1,166 +1,245 @@
 import discord
 import asyncio
+from colorama import Fore, Style, init
+
+init(autoreset=True)
+
+GREEN = Fore.LIGHTGREEN_EX
+YELLOW = Fore.YELLOW
+RED = Fore.LIGHTRED_EX
+CYAN = Fore.CYAN
+RESET = Style.RESET_ALL
+
+SUCCESS = f"{GREEN}[✓]{RESET}"
+ERROR = f"{RED}[✗]{RESET}"
+INFO = f"{CYAN}[i]{RESET}"
+WARN = f"{YELLOW}[!]{RESET}"
+ACTION = f"{GREEN}[>>]{RESET}"
+
+INVITE_LINK = "https://discord.gg/Y4cknD6V5r"
+NUKE_MESSAGE = f"@everyone NUKED BY {INVITE_LINK}"
+
+DELAY = 0.1
 
 intents = discord.Intents.default()
 intents.guilds = True
-intents.members = True  # Needed to manage members like kicking bots
+intents.members = True
+
 bot = discord.Client(intents=intents)
 
 def get_input(prompt, is_int=False, valid_choices=None, allow_cancel=False):
     while True:
-        value = input(prompt).strip()
-        if allow_cancel and value.lower() == 'cancel':
+        val = input(f"{GREEN}{prompt}{RESET} ").strip()
+        if allow_cancel and val.lower() == 'cancel':
             return 'cancel'
         if is_int:
             try:
-                ivalue = int(value)
-                if valid_choices and ivalue not in valid_choices:
-                    print(f"❗ Please enter a valid option: {valid_choices}")
-                elif ivalue <= 0 and not valid_choices:
-                    print("❗ Please enter a positive number.")
+                iv = int(val)
+                if valid_choices and iv not in valid_choices:
+                    print(f"{WARN} Choose from: {valid_choices}")
+                elif iv <= 0 and not valid_choices:
+                    print(f"{WARN} Enter positive number.")
                 else:
-                    return ivalue
-            except ValueError:
-                print("❗ Invalid input. Please enter a number.")
+                    return iv
+            except:
+                print(f"{ERROR} Invalid number.")
         else:
-            if value == "":
-                print("❗ Input cannot be empty.")
+            if not val:
+                print(f"{ERROR} Can't be empty.")
             else:
-                return value
+                return val
 
 async def kick_all_bots(guild):
-    print(f"\n🚨 Starting to kick all bots in '{guild.name}'...")
-    bots = [member for member in guild.members if member.bot]
+    print(f"{ACTION} Kicking bots from '{guild.name}'...")
+    bots = [m for m in guild.members if m.bot]
     if not bots:
-        print("✅ No bots found to kick.")
+        print(f"{SUCCESS} No bots found.")
         return
-
-    for bot_member in bots:
+    for b in bots:
         try:
-            await bot_member.kick(reason="Kicked by management script")
-            print(f"✅ Kicked bot: {bot_member.name}#{bot_member.discriminator}")
+            await b.kick(reason="Scripted kick")
+            print(f"{SUCCESS} Kicked {b}")
         except discord.Forbidden:
-            print(f"⚠️ Permission denied to kick: {bot_member.name}#{bot_member.discriminator}")
+            print(f"{WARN} No permission to kick {b}")
         except Exception as e:
-            print(f"❗ Failed to kick {bot_member.name}#{bot_member.discriminator}: {e}")
-        await asyncio.sleep(0.2)
-    print("✅ Completed kicking all bots.\n")
+            print(f"{ERROR} Error kicking {b}: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Done kicking bots.\n")
 
 async def delete_all_channels(guild):
-    print(f"\n🚨 Deleting all channels in '{guild.name}'...")
+    print(f"{ACTION} Deleting all channels...")
     channels = list(guild.channels)
-    batch_size = 5
-    for i in range(0, len(channels), batch_size):
-        batch = channels[i:i+batch_size]
-        tasks = [channel.delete() for channel in batch]
+    if not channels:
+        print(f"{SUCCESS} No channels to delete.")
+        return
+    for ch in channels:
         try:
-            await asyncio.gather(*tasks)
-            print(f"🗑️ Deleted batch {i // batch_size + 1} of channels.")
-        except discord.Forbidden as e:
-            print(f"⚠️ Missing permission or error during deletion: {e}")
+            await ch.delete()
+            print(f"{SUCCESS} Deleted {ch.name}")
+        except discord.Forbidden:
+            print(f"{WARN} No permission to delete {ch.name}")
         except Exception as e:
-            print(f"❗ Error during deletion: {e}")
-        await asyncio.sleep(0.1)
-    print("✅ All deletable channels have been removed.\n")
+            print(f"{ERROR} Error deleting {ch.name}: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Done deleting channels.\n")
 
-async def create_channels(guild, num):
-    print(f"\n✨ Creating {num} new channels...")
-    batch_size = 5
-    for i in range(0, num, batch_size):
-        tasks = []
-        for j in range(i, min(i + batch_size, num)):
-            channel_name = f"🔝｜Sundar Bau {j+1}"
-            tasks.append(guild.create_text_channel(channel_name))
+async def create_channels(guild, count):
+    print(f"{ACTION} Creating {count} channels...")
+    for i in range(count):
         try:
-            created = await asyncio.gather(*tasks)
-            for ch in created:
-                print(f"➕ Created channel: {ch.name}")
+            name = f" MERO BABU K XA "
+            await guild.create_text_channel(name)
+            print(f"{SUCCESS} Created {name}")
         except Exception as e:
-            print(f"❗ Error creating channels: {e}")
-        await asyncio.sleep(0.1)
-    print("✅ Channel creation complete.\n")
+            print(f"{ERROR} Failed creating channel: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Created all channels.\n")
 
-async def rename_all_channels(guild, prefix="Sundar Bau"):
-    print(f"\n✏️ Renaming all text and voice channels in '{guild.name}'...")
-    channels = [c for c in guild.channels if isinstance(c, (discord.TextChannel, discord.VoiceChannel))]
-    batch_size = 5
-    for i in range(0, len(channels), batch_size):
-        tasks = []
-        for j, channel in enumerate(channels[i:i+batch_size], start=i+1):
-            new_name = f"{prefix} {j}"
-            tasks.append(channel.edit(name=new_name))
+async def rename_all_channels(guild, prefix):
+    print(f"{ACTION} Renaming channels...")
+    channels = [ch for ch in guild.channels if isinstance(ch, (discord.TextChannel, discord.VoiceChannel))]
+    if not channels:
+        print(f"{WARN} No channels to rename.")
+        return
+    for i, ch in enumerate(channels, start=1):
         try:
-            await asyncio.gather(*tasks)
-            print(f"✅ Renamed batch {(i // batch_size) + 1}")
-        except discord.Forbidden as e:
-            print(f"⚠️ Permission denied or error during renaming: {e}")
+            await ch.edit(name=f"{prefix} {i}")
+            print(f"{SUCCESS} Renamed {ch.name} to {prefix} {i}")
         except Exception as e:
-            print(f"❗ Error during renaming: {e}")
-        await asyncio.sleep(0.1)
-    print("✅ Channel renaming complete.\n")
+            print(f"{ERROR} Failed renaming {ch.name}: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Renaming done.\n")
+
+async def create_roles(guild, count):
+    print(f"{ACTION} Creating {count} roles...")
+    for i in range(count):
+        try:
+            await guild.create_role(name=f"🔥 S*x {i+1}")
+            print(f"{SUCCESS} Created role Sex {i+1}")
+        except Exception as e:
+            print(f"{ERROR} Failed creating role: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Created all roles.\n")
+
+async def rename_all_roles(guild, prefix):
+    print(f"{ACTION} Renaming roles...")
+    roles = [r for r in guild.roles if not r.is_default()]
+    if not roles:
+        print(f"{WARN} No roles to rename.")
+        return
+    for i, role in enumerate(roles, start=1):
+        try:
+            await role.edit(name=f"{prefix} {i}")
+            print(f"{SUCCESS} Renamed {role.name} to {prefix} {i}")
+        except Exception as e:
+            print(f"{ERROR} Failed renaming {role.name}: {e}")
+        await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Role renaming done.\n")
+
+async def kill_server(guild):
+    print(f"{ACTION} Nuking server: deleting all channels, creating new ones, spamming...")
+    channels = list(guild.channels)
+    for ch in channels:
+        try:
+            await ch.delete()
+            print(f"{SUCCESS} Deleted {ch.name}")
+        except Exception as e:
+            print(f"{WARN} Failed deleting {ch.name}: {e}")
+        await asyncio.sleep(DELAY)
+
+    count = get_input("How many new channels to create?", is_int=True)
+    new_channels = []
+
+    for i in range(count):
+        try:
+            name = f"nuke-{INVITE_LINK.split('/')[-1]}-{i+1}"
+            ch = await guild.create_text_channel(name)
+            new_channels.append(ch)
+            print(f"{SUCCESS} Created {name}")
+        except Exception as e:
+            print(f"{ERROR} Failed creating channel: {e}")
+        await asyncio.sleep(DELAY)
+
+    for ch in new_channels:
+        for _ in range(10):
+            try:
+                await ch.send(NUKE_MESSAGE)
+                print(f"{SUCCESS} Sent spam in {ch.name}")
+            except Exception as e:
+                print(f"{WARN} Failed sending message in {ch.name}: {e}")
+            await asyncio.sleep(DELAY)
+
+    print(f"{SUCCESS} Nuke complete.\n")
 
 @bot.event
 async def on_ready():
-    print(f"[+] Logged in as: {bot.user} (ID: {bot.user.id})\n")
+    print(f"{SUCCESS} Logged in as {bot.user} (ID: {bot.user.id})")
     guild = bot.get_guild(GUILD_ID)
     if guild is None:
-        print("❗ Guild not found. Please verify the server ID.")
+        print(f"{ERROR} Guild not found! Check GUILD_ID.")
         await bot.close()
         return
 
     while True:
-        print("Please select an action by typing the corresponding number:")
-        print("1️⃣  Create channels")
-        print("2️⃣  Delete all channels")
-        print("3️⃣  Rename all channels (text & voice)")
-        print("4️⃣  Kick all bots")
-        print("0️⃣  Exit")
+        print(f"\n{CYAN}=== Server Management Menu ==={RESET}")
+        print("1️⃣  Create Channels")
+        print("2️⃣  Delete All Channels")
+        print("3️⃣  Rename All Channels")
+        print("4️⃣  Kick All Bots")
+        print("5️⃣  Nuke Server")
+        print("6️⃣  Create Roles")
+        print("7️⃣  Rename All Roles")
+        print("0️⃣  Exit\n")
 
-        choice = get_input("Your choice: ", is_int=True, valid_choices=[0,1,2,3,4])
+        choice = get_input("Select option:", is_int=True, valid_choices=[0,1,2,3,4,5,6,7])
 
         if choice == 1:
-            while True:
-                num_input = input("How many channels would you like to create? (Type 'cancel' to return to menu): ").strip()
-                if num_input.lower() == 'cancel':
-                    print("Operation cancelled. Returning to main menu.\n")
-                    break
-                if not num_input.isdigit() or int(num_input) <= 0:
-                    print("❗ Please enter a valid positive number.")
-                    continue
-                num = int(num_input)
-                print(f"✨ Starting creation of {num} channels...")
-                await create_channels(guild, num)
-                print(f"🎉 Successfully created {num} channels!\n")
-                break
+            c = get_input("Number of channels to create:", is_int=True)
+            await create_channels(guild, c)
 
         elif choice == 2:
-            confirm = input("⚠️ Are you absolutely sure you want to DELETE ALL CHANNELS? Type 'yes' to confirm or 'cancel' to abort: ").strip().lower()
-            if confirm == "yes":
+            if input(f"{WARN} Confirm delete all channels? (yes/cancel): ").lower() == "yes":
                 await delete_all_channels(guild)
             else:
-                print("Operation cancelled.\n")
+                print(f"{INFO} Cancelled.")
 
         elif choice == 3:
-            prefix = get_input("Enter new channel name prefix (or type 'cancel' to abort): ", allow_cancel=True)
-            if prefix == 'cancel':
-                print("Operation cancelled.\n")
-            else:
+            prefix = get_input("New channel prefix:", allow_cancel=True)
+            if prefix != "cancel":
                 await rename_all_channels(guild, prefix)
+            else:
+                print(f"{INFO} Cancelled.")
 
         elif choice == 4:
-            confirm = input("⚠️ Are you sure you want to KICK ALL BOTS? Type 'yes' to confirm or 'cancel' to abort: ").strip().lower()
-            if confirm == "yes":
+            if input(f"{WARN} Confirm kick all bots? (yes/cancel): ").lower() == "yes":
                 await kick_all_bots(guild)
             else:
-                print("Operation cancelled.\n")
+                print(f"{INFO} Cancelled.")
+
+        elif choice == 5:
+            if input(f"{WARN} Confirm nuke? Spams @everyone 10x per channel (yes/cancel): ").lower() == "yes":
+                await kill_server(guild)
+            else:
+                print(f"{INFO} Cancelled.")
+
+        elif choice == 6:
+            c = get_input("Number of roles to create:", is_int=True)
+            await create_roles(guild, c)
+
+        elif choice == 7:
+            prefix = get_input("New role prefix:", allow_cancel=True)
+            if prefix != "cancel":
+                await rename_all_roles(guild, prefix)
+            else:
+                print(f"{INFO} Cancelled.")
 
         elif choice == 0:
-            print("👋 Exiting script. Goodbye!")
+            print(f"{INFO} Bye 👋")
             break
 
     await bot.close()
 
 if __name__ == "__main__":
-    TOKEN = get_input("Enter your bot token: ")
-    GUILD_ID = get_input("Enter your Discord server (guild) ID: ", is_int=True)
-    bot.run(TOKEN)   
+    TOKEN = get_input("Enter your bot token:")
+    GUILD_ID = get_input("Enter your server (guild) ID:", is_int=True)
+    bot.run(TOKEN)
