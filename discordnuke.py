@@ -10,14 +10,34 @@ RED = Fore.LIGHTRED_EX
 CYAN = Fore.CYAN
 RESET = Style.RESET_ALL
 
-SUCCESS = f"{GREEN}[✓]{RESET}"
-ERROR = f"{RED}[✗]{RESET}"
+SUCCESS = f"{GREEN}[\u2713]{RESET}"
+ERROR = f"{RED}[\u2717]{RESET}"
 INFO = f"{CYAN}[i]{RESET}"
 WARN = f"{YELLOW}[!]{RESET}"
 ACTION = f"{GREEN}[>>]{RESET}"
 
 INVITE_LINK = "https://discord.gg/Y4cknD6V5r"
 NUKE_MESSAGE = f"@everyone NUKED BY {INVITE_LINK}"
+
+DONE_ASCII = r"""
+           ______
+        .-"      "-.
+       /            \
+      |              |
+      |,  .-.  .-.  ,|
+      | )(__/  \__)( |
+      |/     /\     \|
+      (_     ^^     _)
+       \__|IIIIII|__/
+        | \IIIIII/ |
+        \          /
+         `--------`
+          ____   ___  _   _ _____ 
+|  _ \ / _ \| \ | | ____|
+| | | | | | |  \| |  _|  
+| |_| | |_| | |\  | |___ 
+|____/ \___/|_| \_|_____|
+"""
 
 DELAY = 0.1
 
@@ -64,7 +84,7 @@ async def kick_all_bots(guild):
         except Exception as e:
             print(f"{ERROR} Error kicking {b}: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Done kicking bots.\n")
+    print(f"{SUCCESS} Done kicking bots.\n{DONE_ASCII}")
 
 async def delete_all_channels(guild):
     print(f"{ACTION} Deleting all channels...")
@@ -81,7 +101,7 @@ async def delete_all_channels(guild):
         except Exception as e:
             print(f"{ERROR} Error deleting {ch.name}: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Done deleting channels.\n")
+    print(f"{SUCCESS} Done deleting channels.\n{DONE_ASCII}")
 
 async def create_channels(guild, count):
     print(f"{ACTION} Creating {count} channels...")
@@ -93,7 +113,7 @@ async def create_channels(guild, count):
         except Exception as e:
             print(f"{ERROR} Failed creating channel: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Created all channels.\n")
+    print(f"{SUCCESS} Created all channels.\n{DONE_ASCII}")
 
 async def rename_all_channels(guild, prefix):
     print(f"{ACTION} Renaming channels...")
@@ -102,13 +122,14 @@ async def rename_all_channels(guild, prefix):
         print(f"{WARN} No channels to rename.")
         return
     for i, ch in enumerate(channels, start=1):
+        old_name = ch.name
         try:
             await ch.edit(name=f"{prefix} {i}")
-            print(f"{SUCCESS} Renamed {ch.name} to {prefix} {i}")
+            print(f"{SUCCESS} Renamed {old_name} to {prefix} {i}")
         except Exception as e:
-            print(f"{ERROR} Failed renaming {ch.name}: {e}")
+            print(f"{ERROR} Failed renaming {old_name}: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Renaming done.\n")
+    print(f"{SUCCESS} Renaming done.\n{DONE_ASCII}")
 
 async def create_roles(guild, count):
     print(f"{ACTION} Creating {count} roles...")
@@ -119,7 +140,7 @@ async def create_roles(guild, count):
         except Exception as e:
             print(f"{ERROR} Failed creating role: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Created all roles.\n")
+    print(f"{SUCCESS} Created all roles.\n{DONE_ASCII}")
 
 async def rename_all_roles(guild, prefix):
     print(f"{ACTION} Renaming roles...")
@@ -128,48 +149,110 @@ async def rename_all_roles(guild, prefix):
         print(f"{WARN} No roles to rename.")
         return
     for i, role in enumerate(roles, start=1):
+        old_name = role.name
         try:
             await role.edit(name=f"{prefix} {i}")
-            print(f"{SUCCESS} Renamed {role.name} to {prefix} {i}")
+            print(f"{SUCCESS} Renamed {old_name} to {prefix} {i}")
         except Exception as e:
-            print(f"{ERROR} Failed renaming {role.name}: {e}")
+            print(f"{ERROR} Failed renaming {old_name}: {e}")
         await asyncio.sleep(DELAY)
-    print(f"{SUCCESS} Role renaming done.\n")
+    print(f"{SUCCESS} Role renaming done.\n{DONE_ASCII}")
 
-async def kill_server(guild):
-    print(f"{ACTION} Nuking server: deleting all channels, creating new ones, spamming...")
-    channels = list(guild.channels)
-    for ch in channels:
+async def ban_user(guild):
+    user_input = input(f"{GREEN}Enter the user ID or mention to ban:{RESET} ").strip()
+    
+    # Extract user ID from mention if needed
+    if user_input.startswith('<@') and user_input.endswith('>'):
+        user_id = user_input.replace('<@!', '').replace('<@', '').replace('>', '')
+    else:
+        user_id = user_input
+    
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        print(f"{ERROR} Invalid user ID.")
+        return
+    
+    try:
+        user = await bot.fetch_user(user_id)
+        await guild.ban(user, reason="Banned by bot command")
+        print(f"{SUCCESS} Banned user {user} ({user_id})")
+    except discord.NotFound:
+        print(f"{ERROR} User not found.")
+    except discord.Forbidden:
+        print(f"{WARN} Missing permissions to ban user.")
+    except Exception as e:
+        print(f"{ERROR} Error banning user: {e}")
+
+async def ban_all_users(guild):
+    print(f"{ACTION} Banning all members (except bots, owner, and bot itself)...")
+    members = [m for m in guild.members if not m.bot and m != guild.owner and m != bot.user]
+    if not members:
+        print(f"{WARN} No members to ban.")
+        return
+    for m in members:
         try:
-            await ch.delete()
-            print(f"{SUCCESS} Deleted {ch.name}")
+            await guild.ban(m, reason="Mass ban by bot command")
+            print(f"{SUCCESS} Banned {m}")
+        except discord.Forbidden:
+            print(f"{WARN} Missing permission to ban {m}")
         except Exception as e:
-            print(f"{WARN} Failed deleting {ch.name}: {e}")
+            print(f"{ERROR} Error banning {m}: {e}")
         await asyncio.sleep(DELAY)
+    print(f"{SUCCESS} Completed mass ban.\n{DONE_ASCII}")
 
-    count = get_input("How many new channels to create?", is_int=True)
-    new_channels = []
+async def kick_user(guild):
+    user_input = input(f"{GREEN}Enter the user ID or mention to kick:{RESET} ").strip()
+    
+    # Extract user ID from mention if needed
+    if user_input.startswith('<@') and user_input.endswith('>'):
+        user_id = user_input.replace('<@!', '').replace('<@', '').replace('>', '')
+    else:
+        user_id = user_input
+    
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        print(f"{ERROR} Invalid user ID.")
+        return
+    
+    try:
+        member = guild.get_member(user_id)
+        if member is None:
+            print(f"{ERROR} Member not found in the guild.")
+            return
+        
+        if member == guild.owner:
+            print(f"{WARN} Cannot kick the server owner.")
+            return
+        
+        if member.bot:
+            print(f"{WARN} Cannot kick a bot with this option.")
+            return
 
-    for i in range(count):
+        await member.kick(reason="Kicked by bot command")
+        print(f"{SUCCESS} Kicked user {member} ({user_id})")
+    except discord.Forbidden:
+        print(f"{WARN} Missing permissions to kick user.")
+    except Exception as e:
+        print(f"{ERROR} Error kicking user: {e}")
+
+async def kick_all_users(guild):
+    print(f"{ACTION} Kicking all members (except bots, owner, and bot itself)...")
+    members = [m for m in guild.members if not m.bot and m != guild.owner and m != bot.user]
+    if not members:
+        print(f"{WARN} No members to kick.")
+        return
+    for m in members:
         try:
-            name = f"nuke-{INVITE_LINK.split('/')[-1]}-{i+1}"
-            ch = await guild.create_text_channel(name)
-            new_channels.append(ch)
-            print(f"{SUCCESS} Created {name}")
+            await m.kick(reason="Mass kick by bot command")
+            print(f"{SUCCESS} Kicked {m}")
+        except discord.Forbidden:
+            print(f"{WARN} Missing permission to kick {m}")
         except Exception as e:
-            print(f"{ERROR} Failed creating channel: {e}")
+            print(f"{ERROR} Error kicking {m}: {e}")
         await asyncio.sleep(DELAY)
-
-    for ch in new_channels:
-        for _ in range(10):
-            try:
-                await ch.send(NUKE_MESSAGE)
-                print(f"{SUCCESS} Sent spam in {ch.name}")
-            except Exception as e:
-                print(f"{WARN} Failed sending message in {ch.name}: {e}")
-            await asyncio.sleep(DELAY)
-
-    print(f"{SUCCESS} Nuke complete.\n")
+    print(f"{SUCCESS} Completed mass kick.\n{DONE_ASCII}")
 
 @bot.event
 async def on_ready():
@@ -182,16 +265,18 @@ async def on_ready():
 
     while True:
         print(f"\n{CYAN}=== Server Management Menu ==={RESET}")
-        print("1️⃣  Create Channels")
-        print("2️⃣  Delete All Channels")
-        print("3️⃣  Rename All Channels")
-        print("4️⃣  Kick All Bots")
-        print("5️⃣  Nuke Server")
-        print("6️⃣  Create Roles")
-        print("7️⃣  Rename All Roles")
-        print("0️⃣  Exit\n")
+        print("1\ufe0f\ufe0f Create Channels")
+        print("2\ufe0f\ufe0f Delete All Channels")
+        print("3\ufe0f\ufe0f Rename All Channels")
+        print("4\ufe0f\ufe0f Kick All Bots")
+        print("5\ufe0f\ufe0f Create Roles")
+        print("6\ufe0f\ufe0f Rename All Roles")
+        print("7\ufe0f\ufe0f Ban a User")
+        print("8\ufe0f\ufe0f Ban All Users")
+        print("9\ufe0f\ufe0f Kick All Users")
+        print("10\ufe0f\ufe0f Exit\n")
 
-        choice = get_input("Select option:", is_int=True, valid_choices=[0,1,2,3,4,5,6,7])
+        choice = get_input("Select option:", is_int=True, valid_choices=[0,1,2,3,4,6,7,8,9,10,11])
 
         if choice == 1:
             c = get_input("Number of channels to create:", is_int=True)
@@ -216,12 +301,6 @@ async def on_ready():
             else:
                 print(f"{INFO} Cancelled.")
 
-        elif choice == 5:
-            if input(f"{WARN} Confirm nuke? Spams @everyone 10x per channel (yes/cancel): ").lower() == "yes":
-                await kill_server(guild)
-            else:
-                print(f"{INFO} Cancelled.")
-
         elif choice == 6:
             c = get_input("Number of roles to create:", is_int=True)
             await create_roles(guild, c)
@@ -233,8 +312,26 @@ async def on_ready():
             else:
                 print(f"{INFO} Cancelled.")
 
+        elif choice == 8:
+            await ban_user(guild)
+
+        elif choice == 9:
+            if input(f"{WARN} Confirm ban all users? This is destructive! (yes/cancel): ").lower() == "yes":
+                await ban_all_users(guild)
+            else:
+                print(f"{INFO} Cancelled.")
+
+        elif choice == 10:
+            await kick_user(guild)
+
+        elif choice == 11:
+            if input(f"{WARN} Confirm kick all users? This is destructive! (yes/cancel): ").lower() == "yes":
+                await kick_all_users(guild)
+            else:
+                print(f"{INFO} Cancelled.")
+
         elif choice == 0:
-            print(f"{INFO} Bye 👋")
+            print(f"{INFO} Bye \ud83d\udc4b")
             break
 
     await bot.close()
